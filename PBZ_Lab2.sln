@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31515.178
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PBZ_Lab2.Web", "PBZ_Lab2\PBZ_Lab2.Web.csproj", "{90FA8F51-49ED-4B74-A3BA-36E09CD13D9F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{90FA8F51-49ED-4B74-A3BA-36E09CD13D9F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{90FA8F51-49ED-4B74-A3BA-36E09CD13D9F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{90FA8F51-49ED-4B74-A3BA-36E09CD13D9F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{90FA8F51-49ED-4B74-A3BA-36E09CD13D9F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0BE1D087-F5DB-4D97-9103-59E12BE7F63C}
+	EndGlobalSection
+EndGlobal
