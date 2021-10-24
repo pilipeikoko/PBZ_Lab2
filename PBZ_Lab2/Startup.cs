@@ -1,19 +1,10 @@
+using Autofac;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Autofac;
-using Autofac.Extensions.DependencyInjection;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using PBZ_Lab2.Web.Data;
+using Newtonsoft.Json.Serialization;
 
 namespace PBZ_Lab2
 {
@@ -30,27 +21,22 @@ namespace PBZ_Lab2
 
         // This method gets called by the runtime. Use this method to add services to the container.
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
-        public IServiceProvider ConfigureServices(IServiceCollection services)
+        public void ConfigureServices(IServiceCollection services)
         {
-            services.AddControllersWithViews();
+            services.AddCors(c =>
+            {
+                c.AddPolicy("AllowOrigin", options => options.AllowAnyOrigin().AllowAnyMethod()
+                    .AllowAnyHeader());
+            });
 
-            services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
-            services.AddMemoryCache();
-            services.AddSession();
+            services.AddControllersWithViews()
+                .AddNewtonsoftJson(options =>
+                    options.SerializerSettings.ReferenceLoopHandling = Newtonsoft
+                        .Json.ReferenceLoopHandling.Ignore)
+                .AddNewtonsoftJson(options => options.SerializerSettings.ContractResolver
+                    = new DefaultContractResolver());
 
-            services.AddMvc(x => x.EnableEndpointRouting = false);
-
-            services.AddDbContext<PBZ_Lab2WebContext>(options =>
-                    options.UseSqlServer(Configuration.GetConnectionString("PBZ_Lab2WebContext")));
-
-            var containerBuilder = new ContainerBuilder();
-            containerBuilder.Populate(services);
-            containerBuilder.RegisterAssemblyModules(typeof(Startup).Assembly);
-
-            ApplicationContainer = containerBuilder.Build();
-
-            return new AutofacServiceProvider(ApplicationContainer);
-
+            services.AddControllers();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -66,23 +52,26 @@ namespace PBZ_Lab2
                 // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
             }
-            app.UseHttpsRedirection();
-            app.UseStaticFiles();
-            app.UseSession();
-            app.UseRouting();
-            app.UseCookiePolicy();
-            app.UseAuthorization();
-            app.UseMvc(routes =>
-            {
-                routes.MapRoute(name: "default", template: "{controller=Home}/{action=Index}/{id?}");
-                routes.MapRoute(name: "categoryFilter", template: "Phones/{action}/{os?}", defaults: new { Controller = "Phones", action = "List" });
-            });
+            app.UseCors(options => options.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 
-            using (var scope = app.ApplicationServices.CreateScope())
+            if (env.IsDevelopment())
             {
-                PBZ_Lab2WebContext context = scope.ServiceProvider.GetRequiredService<PBZ_Lab2WebContext>();
-                DefaultDB.Init(context);
+                app.UseDeveloperExceptionPage();
             }
+
+            app.UseRouting();
+
+            app.UseAuthorization();
+
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllers();
+            });
+            //using (var scope = app.ApplicationServices.CreateScope())
+            //{
+            //    PBZ_Lab2WebContext context = scope.ServiceProvider.GetRequiredService<PBZ_Lab2WebContext>();
+            //    DefaultDB.Init(context);
+            //}
         }
     }
 }

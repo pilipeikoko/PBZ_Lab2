@@ -1,13 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using PBZ_Lab2.Domain.Infrastructure;
-using PBZ_Lab2.Web.Data;
+using Microsoft.Extensions.Configuration;
 using PBZ_Lab2.Web.Domain.Models;
+using System;
+using System.Data;
+using System.Data.SqlClient;
+using System.Threading.Tasks;
 
 namespace PBZ_Lab2.Web.Controller
 {
@@ -15,99 +13,121 @@ namespace PBZ_Lab2.Web.Controller
     [ApiController]
     public class UsersController : ControllerBase
     {
-        private readonly PBZ_Lab2WebContext _context;
-        private readonly IUnitOfWork _unitOfWork;
+        private readonly IConfiguration _configuration;
 
-        public UsersController(PBZ_Lab2WebContext context,IUnitOfWork unitOfWork)
+        public UsersController(IConfiguration configuration)
         {
-            _unitOfWork = unitOfWork;
-            _context = context;
+            _configuration = configuration;
         }
 
-        // GET: api/Users
         [HttpGet]
-        public Task<List<User>> GetUser()
+        public async Task<IActionResult> GetUser()
         {
-            var a = _unitOfWork.UserRepository.GetAll().ToListAsync().Result;
-            return  _unitOfWork.UserRepository.GetAll().ToListAsync();
-            //   return await _context.User.ToListAsync();
+            var query = @"select dbo.CarUser.Id, dbo.CarUser.isBlocker, dbo.CarUser.PassportPhoto, dbo.CarUser.DrivingLicensePhoto,
+                                dbo.CarUser.DrivingYearExperience,dbo.CarUser.Rating,dbo.CarUser.FullName,dbo.CarUser.PhoneNumber,
+                                dbo.CarUser.LocationId,dbo.CarUser.ManagerId, loc.Latitude, loc.Longitude,manager.FullName,manager.PhoneNumber,
+                                manager.WorkingYearExperience from dbo.CarUser inner join dbo.Location loc on dbo.CarUser.LocationId = loc.Id
+                                left join dbo.Manager manager on(dbo.CarUser.ManagerId is not NULL and manager.Id = dbo.CarUser.ManagerId);";
+            return await ExecuteQuery(query);
         }
 
-        // GET: api/Users/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<User>> GetUser(Guid id)
+        public async Task<IActionResult> GetUser(Guid id)
         {
-            var user = await _context.User.FindAsync(id);
-
-            if (user == null)
-            {
-                return NotFound();
-            }
-
-            return user;
+            var query = @$"select dbo.CarUser.Id, dbo.CarUser.isBlocker, dbo.CarUser.PassportPhoto, dbo.CarUser.DrivingLicensePhoto,
+                                dbo.CarUser.DrivingYearExperience,dbo.CarUser.Rating,dbo.CarUser.FullName,dbo.CarUser.PhoneNumber,
+                                dbo.CarUser.LocationId,dbo.CarUser.ManagerId, loc.Latitude, loc.Longitude,manager.FullName,manager.PhoneNumber,
+                                manager.WorkingYearExperience from dbo.CarUser inner join dbo.Location loc on dbo.CarUser.LocationId = loc.Id
+                                left join dbo.Manager manager on(dbo.CarUser.ManagerId is not NULL and manager.Id = dbo.CarUser.ManagerId) where
+                                Cast(dbo.CarUser.Id as uniqueidentifier) = Cast('{id.ToString()}' as uniqueidentifier);";
+            return await ExecuteQuery(query);
         }
 
-        // PUT: api/Users/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutUser(Guid id, User user)
         {
-            if (id != user.Id)
-            {
-                return BadRequest();
-            }
+            var query =
+                $@"update dbo.CarUser set PassportPhoto = '{user.PassportPhoto}',DrivingLicensePhoto = '{user.DrivingLicensePhoto}',
+                DrivingYearExperience = '{user.DrivingYearExperience}',isBlocker = '{user.isBlocker}',Rating = '{user.Rating}',
+                FullName = '{user.FullName}', PhoneNumber = '{user.PhoneNumber}'
+                where Cast(dbo.CarUser.Id as uniqueidentifier) = Cast('{id}' as uniqueidentifier);";
 
-            _context.Entry(user).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!UserExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return NoContent();
+            await ExecuteQuery(query);
+            return new JsonResult("Updated succesfully");
         }
 
-        // POST: api/Users
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<User>> PostUser(User user)
+        public async Task<IActionResult> PostUser(User user)
         {
-            _context.User.Add(user);
-            await _context.SaveChangesAsync();
+            var query = $@"insert into dbo.CarUser(Id,PassportPhoto,DrivingLicensePhoto,DrivingYearExperience,isBlocker,Rating,FullName,PhoneNumber) 
+                    values (NEWID(),'{user.PassportPhoto}','{user.DrivingLicensePhoto}','{user.DrivingYearExperience}','{user.isBlocker}','{user.Rating}','{user.FullName}','{user.PhoneNumber}')";
 
-            return CreatedAtAction("GetUser", new { id = user.Id }, user);
+            await ExecuteQuery(query);
+            return new JsonResult("Added succesfully");
         }
 
-        // DELETE: api/Users/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser(Guid id)
         {
-            var user = await _context.User.FindAsync(id);
-            if (user == null)
-            {
-                return NotFound();
-            }
+            var query = $@"delete from dbo.CarUser where Cast(dbo.CarUser.Id as uniqueidentifier) = Cast('{id}' as uniqueidentifier);";
 
-            _context.User.Remove(user);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            await ExecuteQuery(query);
+            return new JsonResult("Deleted succesfully");
         }
 
-        private bool UserExists(Guid id)
+        [HttpPost("location/{userId}")]
+        public async Task<IActionResult> AddLocation(Guid userId, Location location)
         {
-            return _context.User.Any(e => e.Id == id);
+            var locationGuid = Guid.NewGuid();
+            var query = $@"insert into dbo.Location (Id,Latitude, Longitude) values 
+                        (Cast('{locationGuid}' as uniqueidentifier),'{location.Latitude}','{location.Longitude}');";
+            await ExecuteQuery(query);
+
+            var query2 = $@"update dbo.CarUser set LocationId = Cast('{locationGuid}' as uniqueidentifier)
+                where Cast(dbo.CarUser.Id as uniqueidentifier) = Cast('{userId}' as uniqueidentifier);";
+            await ExecuteQuery(query2);
+
+            return new JsonResult("Added succesfully");
+        }
+
+        //not checked
+        [HttpPost("manager/{userId}")]
+        public async Task<IActionResult> AddManager(Guid userId, Manager manager)
+        {
+            var managerGuid = Guid.NewGuid();
+            var query = $@"insert into dbo.Manager (Id,WorkingYearExperience, FullName,PhoneNumber) values 
+                        (Cast('{managerGuid}' as uniqueidentifier),'{manager.WorkingYearExperience}','{manager.FullName}','{manager.PhoneNumber}');";
+            await ExecuteQuery(query);
+
+            var query2 = $@"update dbo.CarUser set ManagerId = Cast('{managerGuid}' as uniqueidentifier)
+                where Cast(dbo.CarUser.Id as uniqueidentifier) = Cast('{userId}' as uniqueidentifier);";
+            await ExecuteQuery(query2);
+
+            return new JsonResult("Added succesfully");
+        }
+
+
+        private async Task<IActionResult> ExecuteQuery(string query)
+        {
+            DataTable dataTable = new DataTable();
+
+            string sqlDataSource = _configuration.GetConnectionString("PBZ_Lab2WebContext");
+            SqlDataReader reader;
+
+            using (SqlConnection connection = new SqlConnection(sqlDataSource))
+            {
+                connection.Open();
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    reader = await command.ExecuteReaderAsync();
+                    dataTable.Load(reader);
+
+                    reader.Close();
+                    connection.Close();
+                }
+            }
+
+            return new JsonResult(dataTable);
         }
     }
 }

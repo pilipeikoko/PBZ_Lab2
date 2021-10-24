@@ -7,6 +7,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="DomainServices\**" />
+    <Content Remove="DomainServices\**" />
+    <EmbeddedResource Remove="DomainServices\**" />
+    <EntityDeploy Remove="DomainServices\**" />
+    <None Remove="DomainServices\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Autofac.Extensions.DependencyInjection" Version="7.1.0" />
     <PackageReference Include="Ensure.That" Version="10.1.0" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.18.0" />
@@ -18,12 +26,9 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="5.0.2" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    <PackageReference Include="System.Data.SqlClient" Version="4.8.3" />
     <PackageReference Include="Z.EntityFramework.Plus.EF6" Version="5.2.13" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="DomainServices\Abstract\" />
-    <Folder Include="DomainServices\Services\" />
   </ItemGroup>
 
 </Project>

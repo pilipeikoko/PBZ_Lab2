@@ -1,6 +1,4 @@
-﻿
-
-namespace PBZ_Lab2.Domain.Infrastructure
+﻿namespace PBZ_Lab2.Domain.Models
 {
     public interface IBaseEntity<T>
     {
