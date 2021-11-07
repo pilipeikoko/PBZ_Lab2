@@ -23,11 +23,7 @@ namespace PBZ_Lab2.Web.Controller
         [HttpGet]
         public async Task<IActionResult> GetUser()
         {
-            var query = @"select dbo.CarUser.Id, dbo.CarUser.isBlocker, dbo.CarUser.PassportPhoto, dbo.CarUser.DrivingLicensePhoto,
-                                dbo.CarUser.DrivingYearExperience,dbo.CarUser.Rating,dbo.CarUser.FullName,dbo.CarUser.PhoneNumber,
-                                dbo.CarUser.LocationId,dbo.CarUser.ManagerId, loc.Latitude, loc.Longitude,manager.FullName,manager.PhoneNumber,
-                                manager.WorkingYearExperience from dbo.CarUser inner join dbo.Location loc on dbo.CarUser.LocationId = loc.Id
-                                left join dbo.Manager manager on(dbo.CarUser.ManagerId is not NULL and manager.Id = dbo.CarUser.ManagerId);";
+            var query = @"select * from dbo.CarUser;";
             return await ExecuteQuery(query);
         }
 
@@ -56,13 +52,28 @@ namespace PBZ_Lab2.Web.Controller
             return new JsonResult("Updated succesfully");
         }
 
+        [HttpPut("link/{managerId}")]
+        public async Task<IActionResult> LinkManager(Guid managerId,User user)
+        {
+            var query =
+                $@"update dbo.CarUser set ManagerId = Cast('{managerId}' as uniqueidentifier)  where Cast(dbo.CarUser.Id as uniqueidentifier) = Cast('{user.Id}' as uniqueidentifier);";
+
+            await ExecuteQuery(query);
+            return new JsonResult("Updated succesfully");
+        }
+
         [HttpPost]
         public async Task<IActionResult> PostUser(User user)
         {
-            var query = $@"insert into dbo.CarUser(Id,PassportPhoto,DrivingLicensePhoto,DrivingYearExperience,isBlocker,Rating,FullName,PhoneNumber) 
-                    values (NEWID(),'{user.PassportPhoto}','{user.DrivingLicensePhoto}','{user.DrivingYearExperience}','{user.isBlocker}','{user.Rating}','{user.FullName}','{user.PhoneNumber}')";
-
+            var locationGuid = Guid.NewGuid();
+            var query = $@"insert into dbo.Location (Id,Latitude, Longitude) values 
+                        (Cast('{locationGuid}' as uniqueidentifier),'{user.Location.Latitude}','{user.Location.Longitude}');";
             await ExecuteQuery(query);
+
+            var query1 = $@"insert into dbo.CarUser(Id,PassportPhoto,DrivingLicensePhoto,DrivingYearExperience,isBlocker,Rating,FullName,PhoneNumber,LocationId) 
+                    values (NEWID(),'{user.PassportPhoto}','{user.DrivingLicensePhoto}','{user.DrivingYearExperience}','{user.isBlocker}','{user.Rating}','{user.FullName}','{user.PhoneNumber}',Cast('{locationGuid}' as uniqueidentifier))";
+
+            await ExecuteQuery(query1);
             return new JsonResult("Added succesfully");
         }
 
@@ -90,10 +101,10 @@ namespace PBZ_Lab2.Web.Controller
             return new JsonResult("Added succesfully");
         }
 
-        //not checked
         [HttpPost("manager/{userId}")]
         public async Task<IActionResult> AddManager(Guid userId, Manager manager)
         {
+            //its not correct
             var managerGuid = Guid.NewGuid();
             var query = $@"insert into dbo.Manager (Id,WorkingYearExperience, FullName,PhoneNumber) values 
                         (Cast('{managerGuid}' as uniqueidentifier),'{manager.WorkingYearExperience}','{manager.FullName}','{manager.PhoneNumber}');";
@@ -107,7 +118,19 @@ namespace PBZ_Lab2.Web.Controller
         }
 
 
-        private async Task<IActionResult> ExecuteQuery(string query)
+
+        [HttpGet("manager/{managerId}")]
+        public async Task<IActionResult> GetLinkedUsers(Guid managerId)
+        {
+            var query =
+                $"select * from dbo.CarUser where Cast(dbo.CarUser.ManagerId as uniqueidentifier) = Cast('{managerId}' as uniqueidentifier);";
+
+            return await ExecuteQuery(query);
+        }
+        
+
+
+            private async Task<IActionResult> ExecuteQuery(string query)
         {
             DataTable dataTable = new DataTable();
 

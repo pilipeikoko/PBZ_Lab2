@@ -3,6 +3,8 @@ using Microsoft.Extensions.Configuration;
 using PBZ_Lab2.Web.Domain.Models;
 using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
 using System.Threading.Tasks;
 
 namespace PBZ_Lab2.Web.Controller
@@ -20,46 +22,79 @@ namespace PBZ_Lab2.Web.Controller
 
         // GET: api/Managers
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Manager>>> GetManager()
+        public async Task<IActionResult> GetManager()
         {
-            return null;
+            var query = @"select * from dbo.Manager;";
+            
+            return await ExecuteQuery(query);
         }
 
         // GET: api/Managers/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Manager>> GetManager(Guid id)
+        public async Task<IActionResult> GetManager(Guid id)
         {
-            return null;
+            var query =
+                $@"select * from dbo.Manager where Cast(Id as uniqueidentifier) = Cast('{id}' as uniqueidentifier);";
+            return await ExecuteQuery(query);
         }
 
-        // PUT: api/Managers/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+        //todo check
+
         [HttpPut("{id}")]
         public async Task<IActionResult> PutManager(Guid id, Manager manager)
         {
+            var query =
+                $@"update dbo.Manager set WorkingYearExperience = '{manager.WorkingYearExperience}',
+                FullName = '{manager.FullName}', PhoneNumber = '{manager.PhoneNumber}'
+                where Cast(dbo.Manager.Id as uniqueidentifier) = Cast('{id}' as uniqueidentifier);";
 
-
-            return NoContent();
+            await ExecuteQuery(query);
+            return new JsonResult("Updated succesfully");
         }
 
         // POST: api/Managers
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Manager>> PostManager(Manager manager)
+        public async Task<IActionResult> PostManager(Manager manager)
         {
-            return NoContent();
+            var query = $@"insert into dbo.Manager(Id,WorkingYearExperience,FullName,PhoneNumber) 
+                    values (NEWID(),'{manager.WorkingYearExperience}','{manager.FullName}','{manager.PhoneNumber}')";
+                            
+            await ExecuteQuery(query);
+            return new JsonResult("Added succesfully");
         }
 
         // DELETE: api/Managers/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteManager(Guid id)
         {
-            return NoContent();
+            var query = $@"delete from dbo.Manager where Cast(dbo.Manager.Id as uniqueidentifier) = Cast('{id}' as uniqueidentifier);";
+
+            await ExecuteQuery(query);
+            return new JsonResult("Deleted succesfully");
         }
 
-        private bool ManagerExists(Guid id)
+        private async Task<IActionResult> ExecuteQuery(string query)
         {
-            return true;
+            DataTable dataTable = new DataTable();
+
+            string sqlDataSource = _configuration.GetConnectionString("PBZ_Lab2WebContext");
+            SqlDataReader reader;
+
+            using (SqlConnection connection = new SqlConnection(sqlDataSource))
+            {
+                connection.Open();
+                using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    reader = await command.ExecuteReaderAsync();
+                    dataTable.Load(reader);
+
+                    reader.Close();
+                    connection.Close();
+                }
+            }
+
+            return new JsonResult(dataTable);
         }
     }
 }

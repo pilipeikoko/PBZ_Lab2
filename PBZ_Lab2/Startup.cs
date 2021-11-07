@@ -25,8 +25,16 @@ namespace PBZ_Lab2
         {
             services.AddCors(c =>
             {
-                c.AddPolicy("AllowOrigin", options => options.AllowAnyOrigin().AllowAnyMethod()
-                    .AllowAnyHeader());
+                {
+                    c.AddPolicy("AllowOrigin", options => options.AllowAnyOrigin().AllowAnyMethod()
+                        .AllowAnyHeader());
+                    c.AddDefaultPolicy(builder =>
+                    {
+                        builder.WithOrigins("http://localhost:3000/")
+                            .AllowAnyMethod()
+                            .AllowAnyHeader();
+                    });
+                }
             });
 
             services.AddControllersWithViews()
@@ -67,11 +75,6 @@ namespace PBZ_Lab2
             {
                 endpoints.MapControllers();
             });
-            //using (var scope = app.ApplicationServices.CreateScope())
-            //{
-            //    PBZ_Lab2WebContext context = scope.ServiceProvider.GetRequiredService<PBZ_Lab2WebContext>();
-            //    DefaultDB.Init(context);
-            //}
         }
     }
 }

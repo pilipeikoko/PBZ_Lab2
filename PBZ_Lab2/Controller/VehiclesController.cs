@@ -3,6 +3,8 @@ using Microsoft.Extensions.Configuration;
 using PBZ_Lab2.Web.Domain.Models;
 using System;
 using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
 using System.Threading.Tasks;
 
 namespace PBZ_Lab2.Web.Controller
@@ -20,16 +22,20 @@ namespace PBZ_Lab2.Web.Controller
 
         // GET: api/Vehicles
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Vehicle>>> GetVehicle()
+        public async Task<IActionResult> GetVehicle()
         {
-            return null;
+            var query = @"select * from dbo.Vehicle;";
+
+            return await ExecuteQuery(query);
         }
 
         // GET: api/Vehicles/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Vehicle>> GetVehicle(Guid id)
+        public async Task<IActionResult> GetVehicle(Guid id)
         {
-            return null;
+            var query =
+                $@"select * from dbo.Vehicle where Cast(Id as uniqueidentifier) = Cast('{id}' as uniqueidentifier);";
+            return await ExecuteQuery(query);
         }
 
         // PUT: api/Vehicles/5
@@ -37,29 +43,68 @@ namespace PBZ_Lab2.Web.Controller
         [HttpPut("{id}")]
         public async Task<IActionResult> PutVehicle(Guid id, Vehicle vehicle)
         {
+            var locationGuid = Guid.NewGuid();
+            var query = $@"insert into dbo.Location (Id,Latitude, Longitude) values 
+                        (Cast('{locationGuid}' as uniqueidentifier),'{vehicle.Location.Latitude}','{vehicle.Location.Longitude}');";
+            await ExecuteQuery(query);
 
-            return NoContent();
+            var query1 =
+                $@"update dbo.Vehicle set RegistrationNumber = '{vehicle.RegistrationNumber}',
+                LocationId = '{locationGuid}'
+                where Cast(dbo.Vehicle.Id as uniqueidentifier) = Cast('{id}' as uniqueidentifier);";
+
+            await ExecuteQuery(query1);
+            return new JsonResult("Updated succesfully");
         }
 
         // POST: api/Vehicles
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Vehicle>> PostVehicle(Vehicle vehicle)
+        public async Task<IActionResult> PostVehicle(Vehicle vehicle)
         {
-            return null;
+            var locationGuid = Guid.NewGuid();
+            var query = $@"insert into dbo.Location (Id,Latitude, Longitude) values 
+                        (Cast('{locationGuid}' as uniqueidentifier),'{vehicle.Location.Latitude}','{vehicle.Location.Longitude}');";
+            await ExecuteQuery(query);
+
+            var query1 = $@"insert into dbo.Vehicle(Id,RegistrationNumber,LocationId) 
+                    values (NEWID(),'{vehicle.RegistrationNumber}','{locationGuid}')";
+
+            await ExecuteQuery(query1);
+            return new JsonResult("Added succesfully");
         }
 
         // DELETE: api/Vehicles/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteVehicle(Guid id)
         {
+            var query = $@"delete from dbo.Vehicle where Cast(dbo.Vehicle.Id as uniqueidentifier) = Cast('{id}' as uniqueidentifier);";
 
-            return NoContent();
+            await ExecuteQuery(query);
+            return new JsonResult("Deleted succesfully");
         }
 
-        private bool VehicleExists(Guid id)
+        private async Task<IActionResult> ExecuteQuery(string query)
         {
-            return true;
+            DataTable dataTable = new DataTable();
+
+            string sqlDataSource = _configuration.GetConnectionString("PBZ_Lab2WebContext");
+            SqlDataReader reader;
+
+            await using (SqlConnection connection = new SqlConnection(sqlDataSource))
+            {
+                connection.Open();
+                await using (SqlCommand command = new SqlCommand(query, connection))
+                {
+                    reader = await command.ExecuteReaderAsync();
+                    dataTable.Load(reader);
+
+                    reader.Close();
+                    connection.Close();
+                }
+            }
+
+            return new JsonResult(dataTable);
         }
     }
 }
